@@ -11,4 +11,7 @@ class BME280SensorSimulator:
 
     def read_humidity(self):
         return random.uniform(60, 80)
+
+    def read_pressure(self):
+        return random.uniform(50,80)
     
