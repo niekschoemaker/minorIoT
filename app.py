@@ -4,7 +4,7 @@
 # Licensed under the MIT license. See LICENSE file in the project root for
 # full license information.
 
-import sqlite3
+import database
 import random
 import time
 import sys
@@ -16,11 +16,6 @@ import RPi.GPIO as GPIO
 from Adafruit_BME280 import *
 import re
 from telemetry import Telemetry
-
-# Database variables
-conn = sqlite3.connect('data.db')
-c = conn.cursor()
-c.execute('''CREATE TABLE [IF NOT EXISTS] weatherdata (device_id TEXT PRIMARY KEY, temperature TEXT, humidity TEXT, pressure TEXT, rasptimestamp TEXT);''')
 
 # HTTP options
 # Because it can poll "after 9 seconds" polls will happen effectively
@@ -265,20 +260,4 @@ if __name__ == "__main__":
     print ( "IoT Hub Client for Python" )
 
     iothub_client_sample_run()
-
-# Start of database backup code
-
-def create_connection(db_file):
-    """ create a database connection to the SQLite database
-        specified by the db_file
-    :param db_file: database file
-    :return: Connection object or None
-    """
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-    except Error as e:
-        print(e)
- 
-    return conn
 
