@@ -12,10 +12,19 @@ def insert_data(device_id, message_id, temperature, humidity, pressure, rasptime
     print(cur.fetchall())
     conn.commit()
 
+def delete_data(message_id):
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM weatherdata WHERE message_id = ?;", message_id)
+        conn.commit()
+        return
+    except:
+        print("Something went wrong while deleting data")
+
 def get_data():
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM weatherdata")
+        cur.execute("SELECT * FROM weatherdata;")
         data = cur.fetchall()
         return data
     except:

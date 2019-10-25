@@ -106,6 +106,7 @@ def send_confirmation_callback(message, result, user_context):
     SEND_CALLBACKS += 1
     print ( "    Total calls confirmed: %d" % SEND_CALLBACKS )
     led_blink()
+    database.delete_data(message.message_id)
 
 
 def device_twin_callback(update_state, payload, user_context):
