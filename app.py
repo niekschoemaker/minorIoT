@@ -220,7 +220,7 @@ def iothub_client_sample_run():
                 # optional: assign ids
                 message.message_id = "message_%d" % MESSAGE_COUNT
                 message.correlation_id = "correlation_%d" % MESSAGE_COUNT
-                database.insert_data("Raspberry Pi", message.message_id, temperature, humidity, pressure, rasptimestamp, time.gmtime())
+                database.insert_data("Raspberry Pi", message.message_id, temperature, humidity, pressure, rasptimestamp, time.time())
                 # optional: assign properties
                 prop_map = message.properties()
                 prop_map.add("temperatureAlert", "true" if temperature > TEMPERATURE_ALERT else "false")
