@@ -203,7 +203,6 @@ def send_message(temperature, humidity, pressure, rasptimestamp, client, message
     # optional: assign ids
     message.message_id = "message_%d" % message_count
     message.correlation_id = "correlation_%d" % message_count
-    database.insert_data("Raspberry Pi", message.message_id, temperature, humidity, pressure, rasptimestamp, time.time())
     # optional: assign properties
     prop_map = message.properties()
     prop_map.add("temperatureAlert", "true" if temperature > TEMPERATURE_ALERT else "false")
@@ -240,6 +239,7 @@ def iothub_client_sample_run():
                 ts = time.gmtime()
                 
                 rasptimestamp = time.strftime("%A %B %d, %Y, %H.%M.%S", ts)
+                database.insert_data("Raspberry Pi", MESSAGE_COUNT, temperature, humidity, pressure, rasptimestamp, time.time())
                 send_message(temperature, humidity, pressure, rasptimestamp, client, MESSAGE_COUNT)
                 MESSAGE_COUNT += 1
                 global MISSED_QUEUE
@@ -248,6 +248,9 @@ def iothub_client_sample_run():
                     for message in MISSED_QUEUE:
                         print( "Retrying message %d " % message.id)
                         send_message(message.temperature, message.humidity, message.pressure, message.rasptimestamp, client, message.id)
+                    
+                    # Clear the queue, if anything failed sending it will just be retried again in 10 seconds
+                    MISSED_QUEUE = None
                 
             time.sleep(config.MESSAGE_TIMESPAN / 1000.0)
 
