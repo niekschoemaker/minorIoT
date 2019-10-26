@@ -5,6 +5,7 @@
 # full license information.
 
 import database
+import website
 import random
 import time
 import sys
@@ -32,7 +33,6 @@ MINIMUM_POLLING_TIME = 9
 MESSAGE_TIMEOUT = 10000
 
 MISSED_QUEUE = None
-
 RECEIVE_CONTEXT = 0
 MESSAGE_COUNT = 0
 MESSAGE_SWITCH = True
