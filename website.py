@@ -8,5 +8,3 @@ def hello():
     data = database.get_data()
     print(data)
     return str(data)
-
-app.run()

@@ -5,7 +5,6 @@
 # full license information.
 
 import database
-import website
 import random
 import time
 import sys
@@ -31,6 +30,8 @@ MINIMUM_POLLING_TIME = 9
 # The timeout period starts at IoTHubClient.send_event_async.
 # By default, messages do not expire.
 MESSAGE_TIMEOUT = 10000
+
+MISSED_QUEUE = None
 
 RECEIVE_CONTEXT = 0
 MESSAGE_COUNT = 0
@@ -95,7 +96,6 @@ def receive_message_callback(message, counter):
     print ( "    Total calls received: %d" % RECEIVE_CALLBACKS )
     return IoTHubMessageDispositionResult.ACCEPTED
 
-
 def send_confirmation_callback(message, result, user_context):
     global SEND_CALLBACKS
     print ( "Confirmation[%d] received for message with result = %s" % (user_context, result) )
@@ -108,6 +108,11 @@ def send_confirmation_callback(message, result, user_context):
     print ( "    Total calls confirmed: %d" % SEND_CALLBACKS )
     led_blink()
     database.delete_data(message.message_id)
+
+    # Perform check for missing messages here because this method only gets called if the message is received succesfully
+    global MISSED_QUEUE
+    if MISSED_QUEUE == None or len(MISSED_QUEUE) == 0:
+        MISSED_QUEUE = database.check_data()
 
 
 def device_twin_callback(update_state, payload, user_context):
@@ -185,6 +190,29 @@ def print_last_message_time(client):
         else:
             print ( iothub_client_error )
 
+def send_message(temperature, humidity, pressure, rasptimestamp, client, message_count):
+    # send a few messages every minute
+    print ("IoTHubClient sending %d messages" % message_count)
+    msg_txt_formatted = MSG_TXT % (
+        temperature,
+        humidity,
+        pressure,
+        rasptimestamp)
+    print (msg_txt_formatted)
+    message = IoTHubMessage(msg_txt_formatted)
+    # optional: assign ids
+    message.message_id = "message_%d" % message_count
+    message.correlation_id = "correlation_%d" % message_count
+    database.insert_data("Raspberry Pi", message.message_id, temperature, humidity, pressure, rasptimestamp, time.time())
+    # optional: assign properties
+    prop_map = message.properties()
+    prop_map.add("temperatureAlert", "true" if temperature > TEMPERATURE_ALERT else "false")
+
+    client.send_event_async(message, send_confirmation_callback, message_count)
+    print ( "IoTHubClient.send_event_async accepted message [%d] for transmission to IoT Hub." % message_count )
+
+    status = client.get_send_status()
+    print ( "Send status: %s" % status )
 
 def iothub_client_sample_run():
     try:
@@ -212,27 +240,15 @@ def iothub_client_sample_run():
                 ts = time.gmtime()
                 
                 rasptimestamp = time.strftime("%A %B %d, %Y, %H.%M.%S", ts)
-                msg_txt_formatted = MSG_TXT % (
-                    temperature,
-                    humidity,
-                    pressure,
-                    rasptimestamp)
-                print (msg_txt_formatted)
-                message = IoTHubMessage(msg_txt_formatted)
-                # optional: assign ids
-                message.message_id = "message_%d" % MESSAGE_COUNT
-                message.correlation_id = "correlation_%d" % MESSAGE_COUNT
-                database.insert_data("Raspberry Pi", message.message_id, temperature, humidity, pressure, rasptimestamp, time.time())
-                # optional: assign properties
-                prop_map = message.properties()
-                prop_map.add("temperatureAlert", "true" if temperature > TEMPERATURE_ALERT else "false")
-
-                client.send_event_async(message, send_confirmation_callback, MESSAGE_COUNT)
-                print ( "IoTHubClient.send_event_async accepted message [%d] for transmission to IoT Hub." % MESSAGE_COUNT )
-
-                status = client.get_send_status()
-                print ( "Send status: %s" % status )
+                send_message(temperature, humidity, pressure, rasptimestamp, client, MESSAGE_COUNT)
                 MESSAGE_COUNT += 1
+                global MISSED_QUEUE
+                if MISSED_QUEUE != None and len(MISSED_QUEUE) > 0:
+                    print( "Found %d missed messages, retrying..." % len(MISSED_QUEUE))
+                    for message in MISSED_QUEUE:
+                        print( "Retrying message %d " % message.id)
+                        send_message(message.temperature, message.humidity, message.pressure, message.rasptimestamp, client, message.id)
+                
             time.sleep(config.MESSAGE_TIMESPAN / 1000.0)
 
     except IoTHubError as iothub_error:
