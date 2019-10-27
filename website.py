@@ -13,6 +13,8 @@ def hello():
 def start():
     app.run(host="0.0.0.0")
 
-# Create a new thread to run the listener since the listener blocks the thread
-x = threading.Thread(target=start)
-x.start()
+def startThread():
+    x = threading.Thread(target=start)
+    x.daemon = True
+    x.start()
+    return x

@@ -77,7 +77,7 @@ if not is_correct_connection_string():
     telemetry.send_telemetry_data(None, EVENT_FAILED, "Device connection string is not correct.")
     sys.exit(0)
 
-MSG_TXT = "{\"deviceId\": \"Raspberry Pi\",\"temperature\": %f,\"humidity\": %f',\"pressure\": %f, \"rasptimestamp\": %s}"
+MSG_TXT = "{\"deviceId\": \"Raspberry Pi\",\"temperature\": %f,\"humidity\": %f,\"pressure\": %f, \"rasptimestamp\": %s}"
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(config.GPIO_PIN_ADDRESS, GPIO.OUT)
@@ -107,7 +107,7 @@ def send_confirmation_callback(message, result, user_context):
     SEND_CALLBACKS += 1
     print ( "    Total calls confirmed: %d" % SEND_CALLBACKS )
     led_blink()
-    database.delete_data(message.message_id)
+    database.delete_data(user_context)
 
     # Perform check for missing messages here because this method only gets called if the message is received succesfully
     global MISSED_QUEUE
@@ -192,17 +192,17 @@ def print_last_message_time(client):
 
 def send_message(temperature, humidity, pressure, rasptimestamp, client, message_count):
     # send a few messages every minute
-    print ("IoTHubClient sending %d messages" % message_count)
+    print ("IoTHubClient sending %d messages" % int(message_count))
     msg_txt_formatted = MSG_TXT % (
-        temperature,
-        humidity,
-        pressure,
-        rasptimestamp)
+        float(temperature),
+        float(humidity),
+        float(pressure),
+        str(rasptimestamp))
     print (msg_txt_formatted)
     message = IoTHubMessage(msg_txt_formatted)
     # optional: assign ids
-    message.message_id = "message_%d" % message_count
-    message.correlation_id = "correlation_%d" % message_count
+    message.message_id = "message_%d" % int(message_count)
+    message.correlation_id = "correlation_%d" % int(message_count)
     # optional: assign properties
     prop_map = message.properties()
     prop_map.add("temperatureAlert", "true" if temperature > TEMPERATURE_ALERT else "false")
@@ -244,10 +244,12 @@ def iothub_client_sample_run():
                 MESSAGE_COUNT += 1
                 global MISSED_QUEUE
                 if MISSED_QUEUE != None and len(MISSED_QUEUE) > 0:
+                    print(MISSED_QUEUE)
                     print( "Found %d missed messages, retrying..." % len(MISSED_QUEUE))
                     for message in MISSED_QUEUE:
-                        print( "Retrying message %d " % message.id)
-                        send_message(message.temperature, message.humidity, message.pressure, message.rasptimestamp, client, message.id)
+                        print( "Retrying message %d " % message[0])
+                        database.update_timestamp(int(message[0]), time.time())
+                        send_message(message[1], message[2], message[3], message[4], client, message[0])
                     
                     # Clear the queue, if anything failed sending it will just be retried again in 10 seconds
                     MISSED_QUEUE = None
@@ -280,6 +282,8 @@ def parse_iot_hub_name():
 if __name__ == "__main__":
     print ( "\nPython %s" % sys.version )
     print ( "IoT Hub Client for Python" )
+
+    x = website.startThread()
 
     iothub_client_sample_run()
 
